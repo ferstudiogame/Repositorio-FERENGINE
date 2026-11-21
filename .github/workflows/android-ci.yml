@@ -16,14 +16,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Extract source package
-        run: tar -xzf FERENGINE_SOURCE.tar.gz
+      - name: Reconstruct source package
+        run: bash tools/unpack-source.sh "$RUNNER_TEMP/ferengine-source"
       - name: Configure core
-        run: cmake -S FerEngine -B FerEngine/build -G Ninja -DFERENGINE_BUILD_TESTS=ON
+        run: cmake -S "$RUNNER_TEMP/ferengine-source/FerEngine" -B "$RUNNER_TEMP/ferengine-source/FerEngine/build" -G Ninja -DFERENGINE_BUILD_TESTS=ON
       - name: Build core
-        run: cmake --build FerEngine/build --parallel
+        run: cmake --build "$RUNNER_TEMP/ferengine-source/FerEngine/build" --parallel
       - name: Run tests
-        run: ctest --test-dir FerEngine/build --output-on-failure
+        run: ctest --test-dir "$RUNNER_TEMP/ferengine-source/FerEngine/build" --output-on-failure
 
   android-debug:
     name: Android debug APK
@@ -32,8 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Extract source package
-        run: tar -xzf FERENGINE_SOURCE.tar.gz
+      - name: Reconstruct source package
+        run: bash tools/unpack-source.sh "$RUNNER_TEMP/ferengine-source"
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -54,11 +54,11 @@ jobs:
             "ndk;28.2.13676358" \
             "cmake;3.31.6"
       - name: Build debug APK
-        run: gradle --no-daemon -p FerEngine/platform/android assembleDebug
+        run: gradle --no-daemon -p "$RUNNER_TEMP/ferengine-source/FerEngine/platform/android" assembleDebug
       - name: Validate APK
         shell: bash
         run: |
-          APK="FerEngine/platform/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK="$RUNNER_TEMP/ferengine-source/FerEngine/platform/android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -t "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "package: name='com.ferstudio.ferengine.debug'"
@@ -67,6 +67,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ferengine-debug-${{ github.sha }}
-          path: FerEngine/platform/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ runner.temp }}/ferengine-source/FerEngine/platform/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
